@@ -13,7 +13,8 @@ networks:
 volumes:
   itflow-db:
   itflow-data:
-
+  itflow-db-backups:
+  
 ########################### ITFLOW
 services:
   itflow:
@@ -73,3 +74,31 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+
+  itflow-db-backup:
+        image: fradelg/mysql-cron-backup
+        container_name: itflow_db_backups
+        volumes:
+          - itflow-db-backups:/backup
+        networks:
+          - itflow-db
+        depends_on:
+          itflow-db:
+            condition: service_healthy
+        environment:
+          - MYSQL_DATABASE=itflow
+          - MYSQL_USER=itflow
+          - MARIADB_PASSWORD=$ITFLOW_DB_PASS
+          - TZ=$TZ
+          - MYSQL_HOST=itflow-db
+          - MAX_BACKUPS=3 #change to your liking
+#          - INIT_BACKUP=0 #run a backup at startup
+#          - EXIT_BACKUP=0 #run a backup on exit
+          # Every day at 23:00
+          - CRON_TIME=0 23 * * *
+          # Make it small
+          - GZIP_LEVEL=9
+          # As of MySQL 8.0.21 this is needed
+          - MYSQLDUMP_OPTS=--no-tablespaces
+        restart: unless-stopped
+
